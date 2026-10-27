@@ -12,8 +12,11 @@ mostly comes from the cache, and the thrown-away call is cheap because it reason
 A tool counts as read-only if its name starts with one of `read_prefixes`, or is in `read_tools`.
 Anything else counts as a write. List your write tools in `write_tools` if names don't follow a pattern.
 
-Check with your provider that changing the effort doesn't change the cache key. Run the profiler on a
-few conversations and look for cache breaks on calls where the effort switched.
+Some providers keep a separate cache for each effort level. On one we tested, every switch to full
+effort only got the shared tools and system prompt from the cache, and paid for the rest of the
+conversation again. That ate all the savings. If yours does that, set `escalate=False`. Then the whole
+conversation stays at `low`, the cache never switches, and nothing gets asked twice. You lose the full
+effort on writes, so check success before you trust it.
 """
 
 from __future__ import annotations
@@ -38,8 +41,10 @@ class ReasoningEffort(Policy):
         read_prefixes: str | list[str] | tuple[str, ...] = READ_PREFIXES,
         read_tools: str | list[str] | tuple[str, ...] = (),
         write_tools: str | list[str] | tuple[str, ...] | None = None,
+        escalate: bool = True,
     ):
         self.low = low
+        self.escalate = escalate
         self.high = high
         self.read_prefixes = tuple(p.lower() for p in _names(read_prefixes))
         self.read_tools = set(_names(read_tools))
@@ -54,7 +59,7 @@ class ReasoningEffort(Policy):
         return request
 
     def review(self, protocol: Protocol, request: dict[str, Any], response: dict[str, Any], ctx: SessionContext) -> dict[str, Any] | None:
-        if protocol == "messages" or get_effort(protocol, request) != self.low:
+        if not self.escalate or protocol == "messages" or get_effort(protocol, request) != self.low:
             return None
         writes = [c.name for c in conv.response_tool_calls(protocol, response) if self.is_write(c.name, ctx)]
         if not writes:

@@ -133,3 +133,15 @@ def test_set_effort_is_deterministic(effort):
     p = ReasoningEffort()
     ctx = SessionContext(task_id="t")
     assert p.apply("chat_completions", a, ctx) == p.apply("chat_completions", b, ctx)
+
+
+def test_no_escalate_keeps_low_for_the_whole_conversation():
+    s, adapter, out = run([chat_reply(tools=["refund_order"])], chat_request("medium"), escalate=False)
+    assert [r["reasoning_effort"] for r in adapter.requests] == ["low"]
+    assert out["choices"][0]["message"]["tool_calls"][0]["function"]["name"] == "refund_order"
+    assert "escalations" not in s.ctx.state_for("reasoning")
+
+
+def test_escalate_setting_from_serve():
+    chain = parse_policies("reason", ["reason.escalate=false"])
+    assert chain == [("reasoning", {"escalate": False})]

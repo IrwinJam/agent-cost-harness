@@ -7,8 +7,31 @@ job just as well.
 It works with any provider that speaks the OpenAI API format. Everything runs offline with a built-in
 simulator, so you can try it without a key.
 
-Early numbers from real runs, including what went wrong and what a full test would cost, are in
-[RESULTS.md](RESULTS.md).
+Early numbers from real runs, and what a full test would cost, are in [RESULTS.md](RESULTS.md).
+
+## Try it
+
+Needs Python 3.11 or newer. No key needed.
+
+```bash
+python -m venv .venv
+.venv/Scripts/python -m pip install -e ".[dev]"   # Mac or Linux: .venv/bin/python
+.venv/Scripts/python examples/simulate.py --clock
+```
+
+That runs one fake agent through each setup and prints something like this:
+
+```
+arm                     cost $   input tok  cache hit  breaks  top cache-break causes
+baseline                0.6431     631,105        0%      19  system_prompt_changed x19
+cache                   0.1291     631,148       90%       0  -
+cache+handles           0.0443     175,367       91%       0  -
+cache+handles+mask      0.0466      94,629       70%       4  history_rewritten x4
+naive-masking           0.2263     235,487       10%      16  history_rewritten x16
+```
+
+These are simulated numbers. They show the harness works, not what you'll save. `--clock` puts a ticking
+timestamp in the system prompt, so the baseline misses the cache on every call.
 
 ## What's in it
 
@@ -20,11 +43,12 @@ into pieces.
 
 **Profiler.** Shows where the money went. A tool output that got resent 12 times shows up once, with its
 full cost. It also shows the exact call where the cache broke and why. It flags things that look
-wasteful too, but those are leads, not proof.
+wasteful too, but those are leads, not proof. `runs/sim.sqlite` exists after you run the simulated
+eval below.
 
 ```bash
-python -m harness profile --list
-python -m harness profile --run <id>
+python -m harness profile --db runs/sim.sqlite --list
+python -m harness profile --db runs/sim.sqlite --run <id>
 ```
 
 **Cost policies.** You can turn each one on or off.
@@ -116,11 +140,9 @@ as the prices in `prices.yaml`.
 `harness/prices.yaml` ships with made-up example prices so everything runs. Put your provider's real
 prices in there, under the provider name you pass with `--provider`, before trusting any cost number.
 
-## Setup
+## Tests
 
 ```bash
-python -m venv .venv
-.venv/Scripts/python -m pip install -e ".[dev]"   # Mac or Linux: .venv/bin/python
 .venv/Scripts/python -m pytest
 ```
 

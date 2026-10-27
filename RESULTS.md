@@ -75,8 +75,8 @@ trial run one at a time:
 | Baseline vs `cache_layout`, 40 tasks, 3 trials each | 240 | about $19 | about 3.5 hours |
 | All four setups, 40 tasks, 3 trials each | 480 | about $38 | about 7 hours |
 
-Plan for some extra on top of that, since reasoning varies a lot from task to task. Both would stay well
-under a $30 or $120 spending cap.
+Plan for some extra on top of that, since reasoning varies a lot from task to task. A spending cap of
+about $30 for the first and $60 for the second leaves room.
 
 The full test hasn't been run yet. On this benchmark, tool outputs are small, so `output_handles` and
 `masking` would barely do anything. Those two need a benchmark with long tool outputs to show what

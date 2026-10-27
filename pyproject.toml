@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "agent-cost-harness"
 version = "0.1.0"
-description = "Profile where LLM agent tokens go, apply cache-aware cost policies, and prove savings at equal task success."
+description = "Profile where LLM agent tokens go, apply cache-aware cost policies, and check the savings hold at equal task success."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"

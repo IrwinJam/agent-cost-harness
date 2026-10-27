@@ -10,12 +10,13 @@ from typing import Any
 
 import yaml
 
-from harness.policies import BatchedMasking, CacheStableLayout, OutputHandles, Policy
+from harness.policies import BatchedMasking, CacheStableLayout, OutputHandles, Policy, ReasoningEffort
 
 POLICIES: dict[str, type[Policy]] = {
     "cache_layout": CacheStableLayout,
     "masking": BatchedMasking,
     "output_handles": OutputHandles,
+    "reasoning": ReasoningEffort,
 }
 
 

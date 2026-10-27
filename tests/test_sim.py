@@ -36,12 +36,21 @@ def test_simulator_caches_append_only_prefixes():
     assert profile.cache_hit_rate > 0.85
 
 
-def test_ticking_clock_breaks_cache_and_p1_fixes_it():
+def test_ticking_clock_breaks_cache_and_cache_layout_fixes_it():
     baseline = simulate([], clock=True)
     assert {e.cause for e in baseline.cache_events} == {"system_prompt_changed"}
-    with_p1 = simulate([CacheStableLayout()], clock=True)
-    assert with_p1.cache_events == []
-    assert with_p1.total_cost < baseline.total_cost * 0.5
+    assert len(baseline.cache_events) >= 10
+    with_layout = simulate([CacheStableLayout()], clock=True)
+    # One break on the call where the changing line is first noticed and moved, then none.
+    assert len(with_layout.cache_events) <= 1
+    assert with_layout.total_cost < baseline.total_cost * 0.5
+
+
+def test_cache_layout_changes_nothing_when_nothing_changes():
+    plain = simulate([])
+    with_layout = simulate([CacheStableLayout()])
+    assert with_layout.cache_events == []
+    assert with_layout.input_tokens == plain.input_tokens  # no context message added
 
 
 def test_batched_masking_beats_naive_masking():

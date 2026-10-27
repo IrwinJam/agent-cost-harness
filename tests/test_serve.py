@@ -45,7 +45,7 @@ def test_parse_policies_orders_and_aliases():
     assert [n for n, _ in parse_policies("mask,cache,handles", [])] == ["cache_layout", "output_handles", "masking"]
     assert parse_policies("", []) == []
     assert parse_policies("mask,masking", ["mask.keep_last=6", "mask.batch=2"]) == [("masking", {"keep_last": 6, "batch": 2})]
-    assert parse_policies("cache", ["cache.set_cache_key=false"]) == [("cache_layout", {"set_cache_key": False})]
+    assert parse_policies("cache", ["cache.cache_key=none"]) == [("cache_layout", {"cache_key": None})]
 
 
 @pytest.mark.parametrize(
@@ -66,7 +66,7 @@ def test_serves_chat_completions_with_policies_and_traces(server):
     assert r.status_code == 200 and r.json()["choices"][0]["message"]["content"] == "ok"
 
     sent = server.seen[-1]
-    assert sent["prompt_cache_key"] == "conv-1"  # cache layout
+    assert sent["prompt_cache_key"].startswith("pfx-")  # cache layout, shared by prompt start
     assert [t["function"]["name"] for t in sent["tools"]] == ["lookup", "fetch_output"]  # output handles
 
     runs = server.store.runs()

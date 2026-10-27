@@ -74,12 +74,18 @@ python -m harness profile --db runs/sim.sqlite --run <id>
 
 **Cost policies.** You can turn each one on or off.
 
-- `cache_layout` keeps the start of the prompt the same between calls. It sorts the tools and moves
-  things like timestamps out of the system prompt.
+- `cache_layout` keeps the start of the prompt the same between calls. It sorts the tools and sends one
+  cache key for every conversation that starts the same way. If a line in the system prompt keeps
+  changing, like a timestamp, it moves that line out of the way once it's seen it change.
 - `output_handles` shortens huge tool outputs and gives the model a `fetch_output` tool to read the rest.
   The harness runs that tool itself, so your agent never sees it.
 - `masking` hides old tool outputs in batches. Hiding one every turn breaks the cache every turn and can
   cost more than doing nothing.
+- `reasoning` (new, not tested on real runs yet) sends every call at low reasoning effort. If the reply
+  calls a tool that changes something, like a refund or a delete, the harness throws it away and asks
+  again at full effort. So easy calls think less, and every action still gets full effort. Tools
+  starting with `get`, `find`, `list`, `search` and similar count as read-only. Name your own with
+  `--set reason.write_tools=refund_order,cancel_order`.
 
 **Evaluation.** You write the test plan first in [eval/protocol.yaml](eval/protocol.yaml). The run
 compares each setup against the baseline on the same tasks and stops at a hard spend cap. At the end you
@@ -130,6 +136,29 @@ Then `python -m harness profile --db runs/serve.sqlite --list`.
 
 It only listens on your machine. Streaming doesn't work yet.
 
+## Test it on your own traffic
+
+Add `--ab` and `serve` splits conversations in half. One half goes straight to your provider, the other
+gets the policies. Each conversation key always lands in the same half.
+
+```bash
+python -m harness serve --base-url https://api.example.com/v1 --policies cache,reason --ab
+python -m harness ab --db runs/serve.sqlite
+```
+
+```
+group       convos   calls    $/convo  cache hit
+control         41     522     0.0512      83.9%
+policies        39     497     0.0398      94.1%
+
+cost per conversation: -22.3% (95% CI -29.0% to -15.1%)
+the policies are cheaper, and the interval doesn't cross zero
+```
+
+That output is an example of the format, not a real result. Wait for at least 30 conversations in each
+half. This only measures cost, so check separately that the agent still does its job. `--ab 0.2` puts
+20% in the policies half if you want to start small.
+
 ## Spending limits
 
 You can cap what `serve` is allowed to spend. Once a limit is hit, calls get a 429 with a message saying
@@ -175,3 +204,6 @@ prices in there, under the provider name you pass with `--provider`, before trus
   against your provider's real cache numbers.
 - `cache_layout` moves timestamp lines into a `user` message, since not every provider allows a `system`
   message mid-chat. That could change behavior, so check success, not just cost.
+- `reasoning` hasn't been run against a real model yet. Check that your provider keeps the cache when
+  the reasoning effort changes between calls, and check success, since easy-looking calls can still
+  matter.

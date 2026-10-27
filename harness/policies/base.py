@@ -45,3 +45,7 @@ class Policy(ABC):
     @abstractmethod
     def apply(self, protocol: Protocol, request: dict[str, Any], ctx: SessionContext) -> dict[str, Any]:
         """Return the rewritten request. `request` is already a copy, so it's fine to change it."""
+
+    def review(self, protocol: Protocol, request: dict[str, Any], response: dict[str, Any], ctx: SessionContext) -> dict[str, Any] | None:
+        """Look at the reply before the agent does. Return a new request to throw the reply away and ask again."""
+        return None

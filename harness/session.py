@@ -109,6 +109,15 @@ class Session:
         conv.items(protocol, request)[:] = self._with_injections(agent_items)
         for policy in self.policies:
             request = policy.apply(protocol, request, self.ctx)
+        response = self._send_one(protocol, request)
+        # A policy can throw a reply away and ask again once, like asking with more reasoning.
+        for policy in self.policies:
+            retry = policy.review(protocol, request, response, self.ctx)
+            if retry is not None:
+                return self._send_one(protocol, retry)
+        return response
+
+    def _send_one(self, protocol: Protocol, request: dict[str, Any]) -> dict[str, Any]:
         if self.budget is not None:
             self.budget.check()
         if self.limit is not None and self.limit.is_set:

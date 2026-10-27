@@ -48,7 +48,7 @@ def test_cache_layout_canonical_tools_and_cache_settings():
     out = run(layout, {"model": "m", "tools": TOOLS, "input": "hi"}, ctx())
     assert [t["name"] for t in out["tools"]] == ["alpha", "zeta"]
     assert list(out["tools"][1]["parameters"]["properties"]) == ["a", "b"]
-    assert out["prompt_cache_key"] == "task-1"
+    assert out["prompt_cache_key"].startswith("pfx-")
     assert out["prompt_cache_retention"] == "24h"
 
 
@@ -59,39 +59,79 @@ def test_cache_layout_tool_order_no_longer_breaks_prefix():
     assert first_divergence(segment("responses", a), segment("responses", b)) is None
 
 
-def test_cache_layout_moves_volatile_lines_to_the_end():
-    layout = CacheStableLayout()
-    instructions = "You are a support agent.\nCurrent time: 2026-10-26T14:03:11Z\nBe concise."
-    out = run(layout, {"model": "m", "instructions": instructions, "input": [{"role": "user", "content": "q"}]}, ctx())
-    assert out["instructions"] == "You are a support agent.\nBe concise."
-    assert out["input"][-1] == {"role": "user", "content": "[Context] Current time: 2026-10-26T14:03:11Z"}
+def ticking(minute):
+    return f"You are a support agent.\nCurrent time: 2026-10-26T14:{minute:02d}:00Z\nBe concise."
 
-    later = run(layout, {"model": "m", "instructions": instructions.replace("14:03:11", "14:09:40"), "input": [{"role": "user", "content": "q"}]}, ctx())
-    # The system prompt is now identical across calls; only the trailing context differs.
-    assert later["instructions"] == out["instructions"]
+
+def test_cache_layout_moves_a_line_only_after_it_changes():
+    layout, c = CacheStableLayout(), ctx()
+    body = lambda minute: {"model": "m", "instructions": ticking(minute), "input": [{"role": "user", "content": "q"}]}
+    first = run(layout, body(1), c)
+    assert first["instructions"] == ticking(1)  # nothing seen changing yet, so nothing moves
+    assert len(first["input"]) == 1
+
+    second = run(layout, body(2), c)  # the time line changed: now it gets moved
+    assert second["instructions"] == "You are a support agent.\nBe concise."
+    assert second["input"][-1] == {"role": "user", "content": "[Context] Current time: 2026-10-26T14:02:00Z"}
+
+    third = run(layout, body(3), c)  # and keeps getting moved, so the system prompt stays the same
+    assert third["instructions"] == second["instructions"]
+    assert third["prompt_cache_key"] == second["prompt_cache_key"]
+
+
+def test_cache_layout_leaves_fixed_lines_with_times_alone():
+    # The exact line that the old pattern rule wrongly moved in a real benchmark's policy.
+    policy = 'Rules.\n- All times in the database are EST and 24 hour based. For example "02:30:00" means 2:30 AM EST.\nBe nice.'
+    layout, c = CacheStableLayout(), ctx()
+    for turn in range(3):
+        req = {"model": "m", "messages": [{"role": "system", "content": policy}, {"role": "user", "content": f"turn {turn}"}]}
+        out = run(layout, req, c, protocol="chat_completions")
+        assert out["messages"][0]["content"] == policy
+        assert len(out["messages"]) == 2  # no context message added
 
 
 def test_cache_layout_chat_leading_system_only():
-    layout = CacheStableLayout()
-    req = {
-        "model": "m",
-        "messages": [
-            {"role": "system", "content": "Rules.\nToday is 2026-10-26."},
-            {"role": "user", "content": "Meet at 10:30?"},
-        ],
-    }
-    out = run(layout, req, ctx(), protocol="chat_completions")
+    layout, c = CacheStableLayout(), ctx()
+    for day in (26, 27):
+        req = {
+            "model": "m",
+            "messages": [
+                {"role": "system", "content": f"Rules.\nToday is 2026-10-{day}."},
+                {"role": "user", "content": "Meet at 10:30?"},
+            ],
+        }
+        out = run(layout, req, c, protocol="chat_completions")
     assert out["messages"][0]["content"] == "Rules."
     assert out["messages"][1]["content"] == "Meet at 10:30?"  # history untouched
-    assert out["messages"][-1]["content"] == "[Context] Today is 2026-10-26."
+    assert out["messages"][-1]["content"] == "[Context] Today is 2026-10-27."
     assert "prompt_cache_retention" not in out  # Responses-only setting
 
 
-def test_cache_layout_respects_existing_cache_key_and_rejects_messages_protocol():
-    layout = CacheStableLayout()
-    assert run(layout, {"model": "m", "input": "x", "prompt_cache_key": "mine"}, ctx())["prompt_cache_key"] == "mine"
+def test_cache_layout_explicit_patterns_move_from_the_first_call():
+    layout = CacheStableLayout(volatile_patterns=(r"^Current time:",))
+    out = run(layout, {"model": "m", "instructions": ticking(1), "input": "q"}, ctx())
+    assert "Current time" not in out["instructions"]
+
+
+def test_cache_layout_key_is_shared_by_prompt_start():
+    def key(system, task, tools=TOOLS):
+        layout = CacheStableLayout()
+        return run(layout, {"model": "m", "tools": tools, "instructions": system, "input": f"task {task}"}, ctx(task=task))["prompt_cache_key"]
+
+    assert key("Policy A", "t1") == key("Policy A", "t2")  # same start, different tasks: shared cache
+    assert key("Policy A", "t1") != key("Policy B", "t1")
+    assert key("Policy A", "t1", TOOLS) == key("Policy A", "t1", list(reversed(TOOLS)))  # tool order doesn't matter
+
+
+def test_cache_layout_key_modes_and_existing_key():
+    by_task = run(CacheStableLayout(cache_key="task"), {"model": "m", "input": "x"}, ctx())
+    assert by_task["prompt_cache_key"] == "task-1"
+    assert "prompt_cache_key" not in run(CacheStableLayout(cache_key=None), {"model": "m", "input": "x"}, ctx())
+    assert run(CacheStableLayout(), {"model": "m", "input": "x", "prompt_cache_key": "mine"}, ctx())["prompt_cache_key"] == "mine"
+    with pytest.raises(ValueError):
+        CacheStableLayout(cache_key="bogus")
     with pytest.raises(UnsupportedProtocol):
-        layout.apply("messages", {"model": "m", "messages": []}, ctx())
+        CacheStableLayout().apply("messages", {"model": "m", "messages": []}, ctx())
 
 
 # ---------------- masking ----------------

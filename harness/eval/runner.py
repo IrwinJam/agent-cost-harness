@@ -1,13 +1,14 @@
 """Run the test plan. Every setup runs on every task, `trials` times.
 
-Tasks go in order. For each task and trial the setups run in a random order that's the same every time,
-so things that drift over time, like rate limits, don't keep favoring one setup.
+Tasks go in order. For each task and trial the setups take turns going first, so with two setups they
+alternate. Going first or second can matter (a warm cache, rate limits, the provider drifting over time),
+and rotating keeps that from always landing on the same setup. A random shuffle can't promise that: in
+the first pilot it put the same setup first on all 5 tasks.
 """
 
 from __future__ import annotations
 
 import datetime as dt
-import random
 from collections.abc import Callable
 
 from harness.adapters.base import Adapter
@@ -55,14 +56,15 @@ def _run_eval(protocol, benchmark, adapter, store, *, eval_id, prices, on, meta,
     done = results.done(eval_id)
     budget = Budget(protocol.budget_usd, spent_usd=results.spent(eval_id))
     prices = prices or PriceTable.load()
-    rng = random.Random(protocol.analysis["seed"])
     total = len(tasks) * protocol.trials * len(protocol.arms)
 
     n = 0
+    slot = 0
     for task_id in tasks:
         for trial in range(protocol.trials):
             arms = protocol.arms
-            rng.shuffle(arms)  # shuffle every time, even for finished trials, so a resumed run keeps the same order
+            arms = arms[slot % len(arms):] + arms[: slot % len(arms)]  # rotate who goes first
+            slot += 1
             for arm in arms:
                 n += 1
                 if (arm, task_id, trial) in done:
@@ -92,7 +94,7 @@ def _run_eval(protocol, benchmark, adapter, store, *, eval_id, prices, on, meta,
                 agent_cost = store.summary(run_id)["cost_usd"]
                 results.record(
                     eval_id,
-                    TrialRow(arm, task_id, trial, run_id, "ok", outcome.success, outcome.reward, agent_cost, outcome.sim_cost_usd, None),
+                    TrialRow(arm, task_id, trial, run_id, "ok", outcome.success, outcome.reward, agent_cost, outcome.sim_cost_usd, None, outcome.info),
                 )
                 log(
                     f"[{n}/{total}] {arm} {task_id}#{trial}: {'pass' if outcome.success else 'fail'} "

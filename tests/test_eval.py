@@ -198,17 +198,18 @@ def test_budget_stops_and_resume_refuses_changed_protocol():
             run_eval(Protocol.from_dict(PROTOCOL), FakeBenchmark(), SimulatedAdapter(chat_reply), store, eval_id=eval_id, prices=PRICES)
 
 
-def test_arm_order_is_seeded():
+def test_setups_take_turns_going_first():
     orders = []
     for _ in range(2):
         bench = FakeBenchmark()
         with TraceStore(":memory:") as store:
             run_eval(Protocol.from_dict(PROTOCOL), bench, SimulatedAdapter(chat_reply), store, prices=PRICES, log=lambda m: None)
         orders.append(bench.seen)
-    assert orders[0] == orders[1]
+    assert orders[0] == orders[1]  # same order every run, so resuming is safe
     pairs = [orders[0][i : i + 2] for i in range(0, len(orders[0]), 2)]  # one pair per (task, trial)
-    assert all(pair[0][1:] == pair[1][1:] for pair in pairs)  # both arms run back to back
-    assert {pair[0][0] for pair in pairs} == {"base", "treat"}  # and each arm sometimes goes first
+    assert all(pair[0][1:] == pair[1][1:] for pair in pairs)  # both setups run back to back
+    firsts = [pair[0][0] for pair in pairs]
+    assert firsts == ["base", "treat"] * (len(firsts) // 2)  # strictly alternating, never lopsided
 
 
 def test_budget_object():
@@ -279,3 +280,42 @@ def test_proxy_routes_through_sessions():
 def test_proxy_only_binds_localhost():
     with pytest.raises(ValueError):
         ProxyServer(lambda key: None, host="0.0.0.0")
+
+
+# ---------------- trial details ----------------
+
+
+class InfoBenchmark(FakeBenchmark):
+    def run(self, task_id, trial, agent):
+        out = super().run(task_id, trial, agent)
+        return Outcome(success=out.success, sim_cost_usd=0.001, info={"termination_reason": "user_stop", "reward_breakdown": {"DB": 1.0}})
+
+
+def test_trial_details_are_saved():
+    with TraceStore(":memory:") as store:
+        eval_id = run_eval(Protocol.from_dict(PROTOCOL), InfoBenchmark(), SimulatedAdapter(chat_reply), store, prices=PRICES, log=lambda m: None)
+        trials = EvalResults(store).trials(eval_id)
+        assert all(t.info["termination_reason"] == "user_stop" for t in trials)
+        assert trials[0].info["reward_breakdown"] == {"DB": 1.0}
+
+
+def test_old_databases_get_the_info_column(tmp_path):
+    import sqlite3
+
+    path = tmp_path / "old.sqlite"
+    with TraceStore(path) as store:
+        old = sqlite3.connect(path)
+        old.executescript(
+            """CREATE TABLE evals (id TEXT PRIMARY KEY, created_at TEXT NOT NULL, protocol_hash TEXT NOT NULL,
+                                   protocol_json TEXT NOT NULL, meta TEXT NOT NULL DEFAULT '{}');
+               CREATE TABLE eval_trials (eval_id TEXT NOT NULL, arm TEXT NOT NULL, task_id TEXT NOT NULL,
+                   trial INTEGER NOT NULL, run_id TEXT, status TEXT NOT NULL, success INTEGER, reward REAL,
+                   agent_cost_usd REAL NOT NULL, sim_cost_usd REAL NOT NULL, error TEXT, finished_at TEXT NOT NULL,
+                   PRIMARY KEY (eval_id, arm, task_id, trial));
+               INSERT INTO evals VALUES ('e1', '2026-10-27', 'h', '{}', '{}');
+               INSERT INTO eval_trials VALUES ('e1', 'base', 't0', 0, NULL, 'ok', 1, 1.0, 0.1, 0.0, NULL, '2026-10-27');"""
+        )
+        old.close()
+        results = EvalResults(store)  # adds the missing column
+        (row,) = results.trials("e1")
+        assert row.info == {} and row.success is True

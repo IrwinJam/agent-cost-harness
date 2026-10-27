@@ -19,6 +19,7 @@ import threading
 from dataclasses import dataclass
 from typing import Any
 
+from harness.ab import CONTROL, assign
 from harness.adapters.base import Adapter
 from harness.budget import Budget, SpendLimit
 from harness.eval.protocol import POLICIES
@@ -28,9 +29,9 @@ from harness.pricing import PriceTable
 from harness.session import Session
 from harness.trace import TraceStore
 
-ALIASES = {"cache": "cache_layout", "handles": "output_handles", "mask": "masking"}
+ALIASES = {"cache": "cache_layout", "handles": "output_handles", "mask": "masking", "reason": "reasoning"}
 # Cache layout goes first. Output handles go before masking so masked placeholders can point at stored outputs.
-ORDER = ["cache_layout", "output_handles", "masking"]
+ORDER = ["cache_layout", "output_handles", "masking", "reasoning"]
 
 
 class ServeError(ValueError):
@@ -94,14 +95,20 @@ def build_server(
     limit: SpendLimit | None = None,
     prices: PriceTable | None = None,
     label: str = "serve",
+    ab: float | None = None,
 ) -> Server:
     store = TraceStore(db)
     budget = Budget(budget_usd) if budget_usd else None
     prices = prices or PriceTable.load()
 
     def new_session(key: str) -> Session:
-        policies: list[Policy] = [POLICIES[name](**kwargs) for name, kwargs in chain]
-        run_id = store.start_run(f"{label}/{key}", {"serve": True, "key": key, "policies": [n for n, _ in chain]})
+        group = assign(key, ab) if ab is not None else None
+        active = [] if group == CONTROL else chain
+        policies: list[Policy] = [POLICIES[name](**kwargs) for name, kwargs in active]
+        meta: dict[str, Any] = {"serve": True, "key": key, "policies": [n for n, _ in active]}
+        if group is not None:
+            meta["ab"] = group
+        run_id = store.start_run(f"{label}/{group}/{key}" if group else f"{label}/{key}", meta)
         return Session(adapter, task_id=key, policies=policies, store=store, run_id=run_id, prices=prices, budget=budget, limit=limit)
 
     return Server(ProxyServer(new_session, port=port).start(), store, budget, chain)
@@ -109,7 +116,7 @@ def build_server(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m harness serve", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--policies", default="cache,handles,mask", help="comma-separated: cache, handles, mask (or full names). Use '' for none")
+    parser.add_argument("--policies", default="cache,handles,mask", help="comma-separated: cache, handles, mask, reason (or full names). Use '' for none")
     parser.add_argument("--set", action="append", default=[], metavar="POLICY.FIELD=VALUE", help="policy setting, e.g. mask.keep_last=6 (repeatable)")
     parser.add_argument("--port", type=int, default=8787)
     parser.add_argument("--db", default="runs/serve.sqlite", help="trace database")
@@ -120,11 +127,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--base-url", help="your provider's OpenAI-compatible base URL, like https://api.example.com/v1")
     parser.add_argument("--api-key-env", default="HARNESS_API_KEY", help="env var that holds your provider key")
     parser.add_argument("--provider", default="example", help="provider name to look up in prices.yaml")
+    parser.add_argument("--ab", nargs="?", type=float, const=0.5, metavar="SHARE", help="A/B test: send this share of conversations (default 0.5) through the policies and the rest without. Compare with python -m harness ab")
     parser.add_argument("--simulate", action="store_true", help="answer with the offline simulator instead of a real provider")
     args = parser.parse_args(argv)
 
     try:
         chain = parse_policies(args.policies, args.set)
+        if args.ab is not None and not (0 < args.ab < 1):
+            raise ServeError("--ab share must be between 0 and 1")
+        if args.ab is not None and not chain:
+            raise ServeError("--ab needs at least one policy to compare against")
         limit = SpendLimit(args.max_total, args.max_per_day, args.max_per_conversation)
         if args.simulate:
             from harness.sim import SimulatedAdapter
@@ -140,11 +152,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
-    server = build_server(adapter, chain=chain, db=args.db, port=args.port, budget_usd=args.budget, limit=limit)
+    server = build_server(adapter, chain=chain, db=args.db, port=args.port, budget_usd=args.budget, limit=limit, ab=args.ab)
     names = ", ".join(n for n, _ in chain) or "none"
     print(f"harness serving on {server.proxy.base_url}  (policies: {names}{'; SIMULATED' if args.simulate else ''})")
     print(f"  OpenAI base URL per conversation: {server.proxy.base_url}/s/<key>/v1")
     print(f"  limits: {_describe(limit, args.budget)}")
+    if args.ab is not None:
+        print(f"  A/B test: {args.ab:.0%} of conversations get the policies  ->  python -m harness ab --db {args.db}")
     print(f"  traces: {args.db}  ->  python -m harness.profiler --db {args.db} --list")
     print("  Ctrl+C to stop", flush=True)  # flush so anything reading through a pipe sees it right away
 

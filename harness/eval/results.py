@@ -9,7 +9,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from harness.trace import TraceStore, _locked
@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS eval_trials (
     agent_cost_usd REAL NOT NULL,
     sim_cost_usd REAL NOT NULL,
     error TEXT,
+    info TEXT NOT NULL DEFAULT '{}',
     finished_at TEXT NOT NULL,
     PRIMARY KEY (eval_id, arm, task_id, trial)
 );
@@ -52,6 +53,7 @@ class TrialRow:
     agent_cost_usd: float
     sim_cost_usd: float
     error: str | None
+    info: dict[str, Any] = field(default_factory=dict)  # why it ended, reward breakdown, etc.
 
 
 class EvalResults:
@@ -61,6 +63,10 @@ class EvalResults:
         self._db = store.connection
         with self.lock:
             self._db.executescript(SCHEMA)
+            columns = {r[1] for r in self._db.execute("PRAGMA table_info(eval_trials)")}
+            if "info" not in columns:  # databases made before this column existed
+                self._db.execute("ALTER TABLE eval_trials ADD COLUMN info TEXT NOT NULL DEFAULT '{}'")
+                self._db.commit()
 
     @_locked
     def start(self, protocol_hash: str, protocol: dict[str, Any], meta: dict[str, Any] | None = None) -> str:
@@ -91,12 +97,12 @@ class EvalResults:
         with self._db:
             self._db.execute(
                 """INSERT OR REPLACE INTO eval_trials (eval_id, arm, task_id, trial, run_id, status, success, reward,
-                       agent_cost_usd, sim_cost_usd, error, finished_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       agent_cost_usd, sim_cost_usd, error, info, finished_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     eval_id, row.arm, row.task_id, row.trial, row.run_id, row.status,
                     None if row.success is None else int(row.success), row.reward,
-                    row.agent_cost_usd, row.sim_cost_usd, row.error, dt.datetime.now(dt.timezone.utc).isoformat(),
+                    row.agent_cost_usd, row.sim_cost_usd, row.error, json.dumps(row.info, default=str), dt.datetime.now(dt.timezone.utc).isoformat(),
                 ),
             )
 
@@ -109,7 +115,7 @@ class EvalResults:
             TrialRow(
                 r["arm"], r["task_id"], r["trial"], r["run_id"], r["status"],
                 None if r["success"] is None else bool(r["success"]), r["reward"],
-                r["agent_cost_usd"], r["sim_cost_usd"], r["error"],
+                r["agent_cost_usd"], r["sim_cost_usd"], r["error"], json.loads(r["info"] or "{}"),
             )
             for r in rows
         ]

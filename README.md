@@ -7,7 +7,7 @@ job just as well.
 It works with any provider that speaks the OpenAI API format. Everything runs offline with a built-in
 simulator, so you can try it without a key.
 
-Early numbers from real runs, and what a full test would cost, are in [RESULTS.md](RESULTS.md).
+Results from a real 240-trial test, including where it fell short, are in [RESULTS.md](RESULTS.md).
 
 ## Try it
 

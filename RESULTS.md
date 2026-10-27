@@ -1,8 +1,7 @@
 # Results so far
 
-These are early numbers from real runs, not proof. The biggest run so far is 5 tasks with 1 trial each,
-which is far too small to say anything for sure about savings. They're here to show the harness working
-on a real model, what it found, and what a full test would cost.
+These are numbers from real runs on one benchmark with one model. They show what the harness found
+there. They don't say what it will save on your agent.
 
 **Setup.** A hosted reasoning model behind an OpenAI-compatible API, reasoning effort set to medium. The
 tasks come from a public customer-service agent benchmark: a retail domain with 40 test tasks, a
@@ -11,73 +10,76 @@ of the 40 tasks). The benchmark's own agent runs unchanged, with its calls route
 Costs use the provider's published prices, which I haven't checked line by line against the billing
 page yet.
 
-Total spent on everything below: about **$0.90**.
+Total spent on everything below: about **$18**.
 
-## 1. The basics work
+## Short version
 
-A handful of direct calls ($0.04 total):
+On this benchmark, `cache_layout` cut the agent's cost by **21%** (95% CI 17% to 25%), or about $21 for
+every $100 the agent spends. Counting the simulated customer and judge, which it doesn't touch, the
+whole bill dropped about 15%.
 
-- Both the Responses and Chat Completions formats work.
-- **Prefix caching is real and large.** Sending the same 8.4k-token prompt start twice, the second call
-  got 8,305 of 8,430 input tokens from the cache (98.5%).
-- Tool calls work with `tool_choice: "auto"`, and a short `user` message in the middle of a
-  conversation (what `cache_layout` adds when a line changes) is accepted.
-- **Reasoning tokens add up fast.** Even at the lowest effort, a one-word answer used up to 318
-  reasoning tokens.
+Success went from 94% to 92%. The test plan said it had to show success dropped by no more than 3
+points, and it couldn't show that. More on why below.
 
-## 2. One full task
+## 1. Full test: baseline vs cache_layout
 
-One benchmark task, start to finish, through the harness. It passed.
-
-| Part | Calls | Cost |
-|---|---:|---:|
-| Agent | 17 | $0.0725 |
-| Simulated customer | 8 | $0.0232 |
-| Judge | 1 | $0.0096 |
-| **Total** | | **$0.105** (45 seconds) |
-
-What the profiler showed for the agent:
-
-- 81% of its input came from the cache with no policies at all. The provider caches automatically.
-- Output was the biggest cost: 36% of agent spend, 22% from reasoning alone.
-- Three calls weren't cached even though the prompt start hadn't changed. Those cost about 15% of the
-  agent's spend.
-- Tool outputs were small. The context never went past about 12k tokens.
-
-## 3. Pilot: baseline vs cache_layout
-
-5 tasks, 1 trial each, with the two setups taking turns going first ($0.75).
+40 tasks, 3 trials each, 240 trials, with the two setups taking turns going first. The test plan, the
+3-point margin included, was written and fingerprinted before the run. $17.10.
 
 | | Baseline | cache_layout |
 |---|---:|---:|
-| Tasks passed | 4 of 5 | 3 of 5 |
-| Agent cost per trial | $0.050 | $0.043 (**-15%**) |
-| Total per trial, incl. customer and judge | $0.080 | $0.070 |
-| Input from cache | 90% | 93% |
-| Reasoning tokens | 17,957 | 14,761 |
+| Tasks passed | 94% | 92% |
+| Passed all 3 trials | 88% | 85% |
+| Agent cost per trial | $0.0502 | $0.0394 (**-21%**) |
+| Customer and judge per trial | $0.0266 | $0.0262 |
+| Input from cache | 83.6% | 94.4% |
+| Calls per trial | 12.9 | 12.9 |
+| Output tokens per trial | 4,551 | 4,661 |
 
-- `cache_layout` shared one cache key across all 5 tasks, so every task after the first started with
-  the 5.1k-token prompt start already cached. The benchmark's system prompt never changes, so it
-  correctly moved nothing out of it.
-- **Most of the -15% probably isn't caching.** Cache hit rates only differ by a few points. More of the
-  gap comes from some conversations just going differently, like one task finishing in 12 calls
-  instead of 16.
-- **Pass rates swing a lot at this size.** One trial per task can't separate a real effect from noise.
-  The task `cache_layout` failed and baseline passed could be either.
+**Where the savings came from.** Both setups made the same number of calls and wrote about the same
+amount, so the agent didn't take shortcuts. The whole drop is input that came from the cache instead
+of being paid for at full price. Uncached input went from $0.0192 to $0.0065 per trial.
 
-## 4. What a full test would cost
+The prompt start was already the same on every call in the baseline. The profiler showed the misses as
+"prefix unchanged but not served from cache", which points at routing. The provider wasn't always
+sending a call to a server that had the prompt start cached. `cache_layout` sends one cache key for
+every conversation with the same prompt start, and that took the misses away: calls with less than
+half their input cached went from 37 of 1,554 to 1 of 1,548. Since the benchmark's system prompt never
+changes, the other part of `cache_layout`, moving changing lines out of the system prompt, did nothing
+here.
 
-Based on about $0.08 per trial including the simulated customer and judge, and about 52 seconds per
-trial run one at a time:
+**Why the success check failed.** Two things.
 
-| Test | Trials | Estimated cost | Estimated time |
-|---|---:|---:|---:|
-| Baseline vs `cache_layout`, 40 tasks, 3 trials each | 240 | about $19 | about 3.5 hours |
-| All four setups, 40 tasks, 3 trials each | 480 | about $38 | about 7 hours |
+- The margin was too tight for this many tasks. With 40 tasks and 3 trials, the lower bound on the
+  difference sits about 6 points under the measured difference. So even a perfect tie would have come
+  out around -6 and failed a -3 margin. The plan should have used more tasks or a wider margin. I'm
+  keeping the result as it is rather than moving the goalposts after the fact.
+- The drop is mostly one task. On one task, baseline passed 3 of 3 and `cache_layout` passed 0 of 3.
+  The customer asks for a return and an exchange together, but the store only allows one per order.
+  Baseline told the customer to pick. `cache_layout` did the return first, which blocked the exchange
+  the customer wanted. Two other tasks lost three trials between them, and `cache_layout` won back four
+trials on three other tasks.
 
-Plan for some extra on top of that, since reasoning varies a lot from task to task. A spending cap of
-about $30 for the first and $60 for the second leaves room.
+`cache_layout` doesn't change any words the model sees here. It sorts the tool list and adds the cache
+key. So that task is either chance or the tool order nudging the model. One way to tell would be to
+rerun with the cache key alone and the tool order left as is.
 
-The full test hasn't been run yet. On this benchmark, tool outputs are small, so `output_handles` and
-`masking` would barely do anything. Those two need a benchmark with long tool outputs to show what
-they can do.
+## 2. Earlier checks
+
+Before the full test:
+
+- **Direct calls ($0.04).** Both the Responses and Chat Completions formats work. Sending the same
+  8.4k-token prompt start twice, the second call got 98.5% from the cache. Even at the lowest effort, a
+  one-word answer used up to 318 reasoning tokens.
+- **One full task ($0.11).** It passed. 81% of the agent's input came from the cache with no policies
+  at all. Output was the biggest cost.
+- **Pilot, 5 tasks, 1 trial each ($0.75).** `cache_layout` was 15% cheaper, but at that size the
+  numbers were mostly noise. The full test is the one to go by.
+
+## 3. What this doesn't cover
+
+- One model, one provider, one benchmark. Your numbers will be different.
+- Tool outputs here are small, and contexts stayed under about 15k tokens. `output_handles` and
+  `masking` would barely do anything, so they weren't tested. They need a benchmark with long tool
+  outputs.
+- Prices aren't checked against the real bill yet.

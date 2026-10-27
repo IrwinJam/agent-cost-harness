@@ -32,7 +32,7 @@ Full numbers and what went wrong are in [RESULTS.md](RESULTS.md). Whether it wou
 
 ## Try it
 
-Needs Python 3.11 or newer. No key needed.
+Needs Python 3.11 or newer. No key needed. To use it with your own agent and provider, see [SETUP.md](SETUP.md).
 
 ```bash
 python -m venv .venv

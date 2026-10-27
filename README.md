@@ -81,7 +81,7 @@ python -m harness profile --db runs/sim.sqlite --run <id>
   The harness runs that tool itself, so your agent never sees it.
 - `masking` hides old tool outputs in batches. Hiding one every turn breaks the cache every turn and can
   cost more than doing nothing.
-- `reasoning` (new, not tested on real runs yet) sends every call at low reasoning effort. If the reply
+- `reasoning` (experimental, see the note below) sends every call at low reasoning effort. If the reply
   calls a tool that changes something, like a refund or a delete, the harness throws it away and asks
   again at full effort. So easy calls think less, and every action still gets full effort. Tools
   starting with `get`, `find`, `list`, `search` and similar count as read-only. Name your own with
@@ -204,6 +204,7 @@ prices in there, under the provider name you pass with `--provider`, before trus
   against your provider's real cache numbers.
 - `cache_layout` moves timestamp lines into a `user` message, since not every provider allows a `system`
   message mid-chat. That could change behavior, so check success, not just cost.
-- `reasoning` hasn't been run against a real model yet. Check that your provider keeps the cache when
-  the reasoning effort changes between calls, and check success, since easy-looking calls can still
-  matter.
+- `reasoning` made things 3% more expensive in a small real pilot. It cut reasoning tokens in half,
+  but that provider keeps a separate cache for each effort level, so every switch to full effort paid
+  for most of the conversation again. Details in [RESULTS.md](RESULTS.md). Only try it if your
+  provider keeps the cache across effort levels, or your agent reasons a lot per call.

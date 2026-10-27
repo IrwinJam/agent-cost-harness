@@ -10,7 +10,7 @@ of the 40 tasks). The benchmark's own agent runs unchanged, with its calls route
 Costs use the provider's published prices, which I haven't checked line by line against the billing
 page yet.
 
-Total spent on everything below: about **$18**.
+Total spent on everything below: about **$19**.
 
 ## Short version
 
@@ -76,7 +76,38 @@ Before the full test:
 - **Pilot, 5 tasks, 1 trial each ($0.75).** `cache_layout` was 15% cheaper, but at that size the
   numbers were mostly noise. The full test is the one to go by.
 
-## 3. What this doesn't cover
+## 3. Pilot: reasoning effort per call
+
+5 tasks, 1 trial each, `cache_layout` alone vs `cache_layout` plus `reasoning`. $0.80. Too small to
+say anything about success, but big enough to show how the costs move.
+
+| | cache_layout | + reasoning |
+|---|---:|---:|
+| Agent cost | $0.229 | $0.236 (**+3%**) |
+| Reasoning tokens | 15,909 | 7,719 (-51%) |
+| Output cost | $0.107 | $0.076 (-29%) |
+| Uncached input cost | $0.047 | $0.075 (+60%) |
+| Calls | 73 | 82 |
+| Tasks passed | 5 of 5 | 4 of 5 |
+
+**It didn't pay off on this model.** Low effort did cut reasoning in half. But the cache doesn't carry
+over when the effort changes. Every time a call went from low to full effort, only the shared tools and
+system prompt (5,105 tokens) came from the cache, and the rest of the conversation was paid at full
+price. Going back to low got 94% to 97% from the cache right away. So this provider seems to keep a
+separate cache for each effort level.
+
+Each of the 6 escalations cost a thrown-away call plus a mostly uncached retry, and that ate the
+savings. It didn't help that this model only reasoned about 217 tokens per call at full effort here,
+so there wasn't much to cut.
+
+The safety net did catch one thing. On one task the low-effort call went straight to changing an
+order, and the full-effort retry asked the customer to confirm first, which the store's rules require.
+The one failed task also failed without the policy in earlier pilots.
+
+Two versions could still work: one effort for the whole conversation so the cache never switches, or
+an agent that reasons a lot more per call. Neither has been tested.
+
+## 4. What this doesn't cover
 
 - One model, one provider, one benchmark. Your numbers will be different.
 - Tool outputs here are small, and contexts stayed under about 15k tokens. `output_handles` and

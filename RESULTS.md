@@ -10,7 +10,7 @@ of the 40 tasks). The benchmark's own agent runs unchanged, with its calls route
 Costs use the provider's published prices, which I haven't checked line by line against the billing
 page yet.
 
-Total spent on everything below: about **$19**.
+Total spent on everything below: about **$20**.
 
 ## Short version
 
@@ -102,12 +102,55 @@ so there wasn't much to cut.
 
 The safety net did catch one thing. On one task the low-effort call went straight to changing an
 order, and the full-effort retry asked the customer to confirm first, which the store's rules require.
-The one failed task also failed without the policy in earlier pilots.
 
-Two versions could still work: one effort for the whole conversation so the cache never switches, or
-an agent that reasons a lot more per call. Neither has been tested.
+## 4. Pilot: low effort for the whole conversation
 
-## 4. What this doesn't cover
+Same 5 tasks, but with `escalate=false`. Every call stays at low, so the cache never switches and
+nothing gets asked twice. $0.71.
+
+| | cache_layout | + reasoning, no escalation |
+|---|---:|---:|
+| Agent cost | $0.219 | $0.187 (**-15%**) |
+| Reasoning tokens | 15,401 | 6,956 (-55%) |
+| Output cost | $0.106 | $0.069 (-35%) |
+| Uncached input cost | $0.038 | $0.039 |
+| Input from cache | 94.3% | 94.5% |
+| Calls | 71 | 75 |
+| Tasks passed | 5 of 5 | 4 of 5 |
+
+**This one worked on cost.** Reasoning dropped by more than half, the cache held, and input cost
+stayed flat, so the output savings went straight to the bottom line.
+
+The failed task is a coin flip on this benchmark. Both setups did the right thing and cancelled the
+order. The low-effort run picked the reason "ordered by mistake" instead of "no longer needed", and the
+grader checks the exact reason. The same task passed only 2 of 3 times for each setup in the full test.
+
+Still, 5 tasks can't say if success holds. Writes no longer get full effort, so a full test is the next
+step before trusting this.
+
+## 5. Live A/B check
+
+To check `serve --ab` against the real API, I sent 64 short scripted conversations through it: a
+4.7k-token store policy as the system prompt, then 3 customer questions each. The split put 34 in the
+control half and 30 in the policies half (`cache_layout`). $0.55.
+
+```
+group       convos   calls    $/convo  cache hit
+control         34     102     0.0110     71.2%
+policies        30      90     0.0059     97.1%
+
+cost per conversation: -46.9% (95% CI -55.0% to -36.2%)
+```
+
+That's the same thing the full test found, on separate traffic. Without a cache key, calls with an
+identical prompt start kept missing the cache. With one shared key, almost every call after the first
+hit it.
+
+The saving is bigger than in the full test because these conversations are short. The fixed prompt
+start is most of each call, so the cache matters more. Real agent conversations with more turns will
+land closer to the 21%. And since the conversations were scripted, this checks cost only.
+
+## 6. What this doesn't cover
 
 - One model, one provider, one benchmark. Your numbers will be different.
 - Tool outputs here are small, and contexts stayed under about 15k tokens. `output_handles` and

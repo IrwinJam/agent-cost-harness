@@ -85,7 +85,8 @@ python -m harness profile --db runs/sim.sqlite --run <id>
   calls a tool that changes something, like a refund or a delete, the harness throws it away and asks
   again at full effort. So easy calls think less, and every action still gets full effort. Tools
   starting with `get`, `find`, `list`, `search` and similar count as read-only. Name your own with
-  `--set reason.write_tools=refund_order,cancel_order`.
+  `--set reason.write_tools=refund_order,cancel_order`. If your provider keeps a separate cache for
+  each effort level, add `--set reason.escalate=false` to stay at low the whole conversation.
 
 **Evaluation.** You write the test plan first in [eval/protocol.yaml](eval/protocol.yaml). The run
 compares each setup against the baseline on the same tasks and stops at a hard spend cap. At the end you
@@ -148,15 +149,16 @@ python -m harness ab --db runs/serve.sqlite
 
 ```
 group       convos   calls    $/convo  cache hit
-control         41     522     0.0512      83.9%
-policies        39     497     0.0398      94.1%
+control         34     102     0.0110     71.2%
+policies        30      90     0.0059     97.1%
 
-cost per conversation: -22.3% (95% CI -29.0% to -15.1%)
+cost per conversation: -46.9% (95% CI -55.0% to -36.2%)
 the policies are cheaper, and the interval doesn't cross zero
 ```
 
-That output is an example of the format, not a real result. Wait for at least 30 conversations in each
-half. This only measures cost, so check separately that the agent still does its job. `--ab 0.2` puts
+That's a real run: 64 short scripted conversations against a hosted model with `--policies cache`
+(details in [RESULTS.md](RESULTS.md)). Short conversations save more than long ones, so don't expect
+that exact number. Wait for at least 30 conversations in each half. This only measures cost, so check separately that the agent still does its job. `--ab 0.2` puts
 20% in the policies half if you want to start small.
 
 ## Spending limits
@@ -204,7 +206,7 @@ prices in there, under the provider name you pass with `--provider`, before trus
   against your provider's real cache numbers.
 - `cache_layout` moves timestamp lines into a `user` message, since not every provider allows a `system`
   message mid-chat. That could change behavior, so check success, not just cost.
-- `reasoning` made things 3% more expensive in a small real pilot. It cut reasoning tokens in half,
-  but that provider keeps a separate cache for each effort level, so every switch to full effort paid
-  for most of the conversation again. Details in [RESULTS.md](RESULTS.md). Only try it if your
-  provider keeps the cache across effort levels, or your agent reasons a lot per call.
+- `reasoning` has only had two 5-task pilots. With escalation it cost 3% more, because the provider
+  kept a separate cache for each effort level and every switch paid for most of the conversation
+  again. With `escalate=false` it cost 15% less, but then writes don't get full effort, and 5 tasks
+  can't show whether success holds. Details in [RESULTS.md](RESULTS.md).

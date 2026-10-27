@@ -8,6 +8,7 @@ It works with any provider that speaks the OpenAI API format. Everything runs of
 simulator, so you can try it without a key.
 
 Results from a real 240-trial test, including where it fell short, are in [RESULTS.md](RESULTS.md).
+Whether it would save you money, and how much, is in [GUIDE.md](GUIDE.md).
 
 ## Try it
 

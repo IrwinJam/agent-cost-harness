@@ -7,8 +7,28 @@ job just as well.
 It works with any provider that speaks the OpenAI API format. Everything runs offline with a built-in
 simulator, so you can try it without a key.
 
-Results from a real 240-trial test, including where it fell short, are in [RESULTS.md](RESULTS.md).
-Whether it would save you money, and how much, is in [GUIDE.md](GUIDE.md).
+## Real results
+
+I tested it on a hosted reasoning model with a public customer-service agent benchmark: 40 tasks, 3
+runs each, with and without `cache_layout`. 240 runs, $17.10.
+
+| | Without | With `cache_layout` |
+|---|---:|---:|
+| Agent cost per run | $0.0502 | $0.0394 |
+| Input from cache | 83.6% | 94.4% |
+| Calls per run | 12.9 | 12.9 |
+| Tasks passed | 94% | 92% |
+
+- **Agent cost dropped 21.5%** (95% CI 17% to 25%). That's about $21 saved for every $100 the agent
+  spends.
+- The agent made the same number of calls and wrote about as much, so the saving is all cache. Most of
+  it came from sending one shared cache key, which stopped the provider from routing calls to servers
+  that didn't have the prompt cached.
+- **Success dipped 2 points**, mostly from one task. The test plan's 3-point margin was too tight for
+  40 tasks to prove either way, so that question is still open.
+
+Full numbers and what went wrong are in [RESULTS.md](RESULTS.md). Whether it would save you money is in
+[GUIDE.md](GUIDE.md).
 
 ## Try it
 

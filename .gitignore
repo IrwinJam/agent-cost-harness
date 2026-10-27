@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# secrets
+.env
+
+
+# local run data (traces can contain full prompts and tool outputs)
+runs/
+*.sqlite
+*.sqlite3
+*.jsonl

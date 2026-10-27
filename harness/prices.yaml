@@ -1,0 +1,13 @@
+# USD per 1M tokens, stored by the date each price starts.
+# Reasoning tokens bill at the output rate.
+#
+# These are made-up example prices so the code runs out of the box. Replace them with your provider's
+# real prices and set verified: true once you've checked them against its pricing page.
+
+example:
+  source: replace with your provider's pricing page
+  models:
+    example-model:
+      - {effective_from: 2026-01-01, input: 1.00, cached_input: 0.10, output: 4.00, verified: false}
+    example-model-large:
+      - {effective_from: 2026-01-01, input: 4.00, cached_input: 0.20, output: 20.00, verified: false}

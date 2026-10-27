@@ -1,0 +1,41 @@
+# Example test plan. Commit your real one before the main run.
+# The runner saves a fingerprint of this file with the results. If the file changes later, the
+# certificate says so.
+#
+# This example runs on the built-in simulated benchmark. To test a real agent, write a Benchmark
+# (see harness/eval/benchmark.py) and point a plan like this at it.
+
+name: example-simulated
+benchmark:
+  name: simulated
+  tasks: all                 # or a list of task ids
+agent:
+  model: example-model
+  protocol: chat_completions
+user_simulator:
+  # If your benchmark uses a model to play the user, use the same one for every setup.
+  # Its cost is tracked on its own and never counts as savings.
+  model: example-model
+trials: 3
+
+baseline: baseline
+primary: cache_handles_masking   # the comparison the claim is about. The others are extra info
+arms:
+  baseline: []
+  cache:
+    - {policy: cache_layout}
+  cache_handles:
+    - {policy: cache_layout}
+    - {policy: output_handles}
+  cache_handles_masking:
+    - {policy: cache_layout}
+    - {policy: output_handles}
+    - {policy: masking, keep_last: 4, batch: 4}
+
+analysis:
+  noninferiority_margin_pp: 3.0   # biggest allowed drop in success, in points. Pick yours before running
+  alpha: 0.05                     # for the one-sided quality check
+  bootstrap_reps: 10000
+  seed: 20261026
+
+budget_usd: 20                     # hard stop for everything this eval spends

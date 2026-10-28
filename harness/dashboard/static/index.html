@@ -8,19 +8,16 @@
 </head>
 <body>
   <main>
-    <header>
-      <h1>Cost A/B</h1>
-      <span id="note"></span>
-    </header>
-    <section class="hero">
-      <div id="change">-</div>
-      <div id="ci"></div>
-    </section>
-    <section class="groups">
-      <div class="group"><h2><i class="a"></i>Policies</h2><b id="policies-mean">-</b><p id="policies-meta"></p></div>
-      <div class="group"><h2><i class="b"></i>Control</h2><b id="control-mean">-</b><p id="control-meta"></p></div>
-    </section>
-    <section id="chart"></section>
+    <h1>Cost A/B</h1>
+    <p id="summary">Waiting for conversations.</p>
+    <table>
+      <tr><th>Group</th><th>Conversations</th><th>Cost per conversation</th><th>Cached input</th><th>Spent</th></tr>
+      <tr><td><i class="a"></i>Policies</td><td id="policies-n"></td><td id="policies-mean"></td><td id="policies-hit"></td><td id="policies-total"></td></tr>
+      <tr><td><i class="b"></i>Control</td><td id="control-n"></td><td id="control-mean"></td><td id="control-hit"></td><td id="control-total"></td></tr>
+    </table>
+    <h2>Average cost per conversation</h2>
+    <div id="chart"></div>
+    <p id="note"></p>
   </main>
   <script src="/app.js"></script>
 </body>

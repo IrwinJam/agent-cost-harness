@@ -1,4 +1,4 @@
-"""`python -m harness <command>`: serve | spend | ab | dashboard | profile | eval."""
+"""`python -m harness <command>`: serve | spend | ab | profile | eval."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ commands:
   serve     run the harness as a local OpenAI-compatible endpoint in front of your provider
   spend     show what's been spent, in total, today and per conversation
   ab        compare cost with and without policies after serve --ab
-  dashboard live page for an A/B test (try --demo, no key needed)
   profile   show where a traced run's money went (same as python -m harness.profiler)
   eval      pre-registered evaluation: validate | estimate | run | certify
 """
@@ -28,8 +27,6 @@ def main(argv: list[str] | None = None) -> int:
         from harness.spend import main as run
     elif command == "ab":
         from harness.ab import main as run
-    elif command == "dashboard":
-        from harness.dashboard import main as run
     elif command == "profile":
         from harness.profiler.__main__ import main as run
     elif command == "eval":

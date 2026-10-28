@@ -20,9 +20,6 @@ different day from the others. Full details in [RESULTS.md](docs/RESULTS.md).</s
 [MUSE.md](docs/MUSE.md). It covers two things in Muse's API that quietly cost you money, and how this
 fixes them.
 
-**Want to see it first?** `python -m harness dashboard --demo` opens a live A/B test in your browser with
-fake traffic. No key, nothing spent.
-
 AI agents send the same stuff over and over, and a lot of what they pay for is the same prompt start
 getting billed at full price. This shows where the money goes and cuts the waste without breaking the
 prompt cache. Then it tests the change on real tasks, so "cheaper" comes with proof that nothing broke.
@@ -79,14 +76,8 @@ naive-masking           0.2263     235,487       10%      16  history_rewritten 
 These are simulated numbers. They show the harness works, not what you'll save. `--clock` puts a ticking
 timestamp in the system prompt, so the baseline misses the cache on every call.
 
-Or watch a live A/B test fill in:
-
-```bash
-.venv/Scripts/python -m harness dashboard --demo      # then open http://localhost:8788
-```
-
-No Python? `docker build -t agent-cost-harness .` then
-`docker run --rm -p 8788:8788 agent-cost-harness dashboard --demo`.
+No Python? `docker build -t agent-cost-harness .` then `docker run --rm -p 8787:8787 agent-cost-harness`
+starts the server with the simulator.
 
 ## What's in it
 
@@ -182,7 +173,6 @@ gets the policies. Each conversation key always lands in the same half.
 ```bash
 python -m harness serve --base-url https://api.example.com/v1 --policies cache,reason --ab
 python -m harness ab --db runs/serve.sqlite
-python -m harness dashboard --db runs/serve.sqlite   # the same numbers, live in your browser
 ```
 
 ```

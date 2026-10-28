@@ -10,7 +10,7 @@ of the 40 tasks). The benchmark's own agent runs unchanged, with its calls route
 Costs use Meta's published prices, which I haven't checked line by line against the billing
 page yet.
 
-Total spent on everything below: about **$25**.
+Total spent on everything below: about **$30**.
 
 ## Short version
 
@@ -21,9 +21,10 @@ whole bill dropped about 15%.
 Success went from 94% to 92%. The test plan said it had to show success dropped by no more than 3
 points, and it couldn't show that. More on why below.
 
-Adding `reasoning` with `escalate=false` on top cut another **20%** (95% CI 16% to 24%) on all 40 tasks,
-and success held: 94% vs 92%, inside a 6-point margin. Together that's roughly 37% off the agent's cost
-compared with no policies, with the caveat in section 6 that the runs were on different days.
+Adding `reasoning` with `escalate=false` on top cut another **20 to 21%**. That held up twice: once
+against runs from a different day (section 6), and again side by side on the same day (section 7),
+where both setups passed exactly the same share of tasks. Together that's roughly 37% off the agent's
+cost compared with no policies.
 
 ## 1. Full test: baseline vs cache_layout
 
@@ -179,7 +180,31 @@ anything in between, it would show up here as a difference between the setups. A
 would settle it. Still, this is the best sign so far that this model doesn't need medium effort for
 this kind of work.
 
-## 7. What this doesn't cover
+## 7. Low effort, side by side
+
+To take the different-day question off the table, both setups ran together on all 40 tasks, 1 trial
+each, taking turns going first. The plan was committed before the run. $4.96.
+
+| | cache_layout | + low effort |
+|---|---:|---:|
+| Tasks passed | 92% (37 of 40) | 92% (37 of 40) |
+| Agent cost per trial | $0.0391 | $0.0308 (**-21%**) |
+| Reasoning tokens per trial | 2,922 | 1,212 (-59%) |
+| Input from cache | 94.2% | 94.3% |
+
+- **The saving is real.** -21% (95% CI 16% to 27%), almost exactly what the different-day run found.
+  So it wasn't day-to-day drift.
+- **Success was a tie,** 37 of 40 each. Each setup failed two tasks the other passed. Low effort won
+  back the return-and-exchange task again.
+- **But a tie on 40 single trials can't prove a small margin.** The one-sided lower bound is -7.5
+  points, just past the 6-point margin, so by the plan's rule the check didn't pass. With 1 trial per
+  task the uncertainty is wider than in section 6, which used 2.
+
+Put together: two runs, 120 low-effort trials, and neither showed success dropping (+2.1 points, then
++0.0). The cost saving is solid. The success question leans clearly toward "no change", but a run with
+more trials per task is what would close it formally.
+
+## 8. What this doesn't cover
 
 - One model, one provider, one benchmark. Your numbers will be different.
 - Tool outputs here are small, and contexts stayed under about 15k tokens. `output_handles` and

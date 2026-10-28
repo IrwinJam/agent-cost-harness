@@ -53,7 +53,8 @@ from the cache. The rest of the conversation was billed again at full price. Swi
 hit the cache right away. So changing effort mid-conversation is expensive on Muse.
 
 The fix is to pick one effort per conversation. On this benchmark, **`low` for the whole conversation
-cut another 20%** on top of the cache key, and tasks passed went from 92% to 94%. That's
+cut another 21%** on top of the cache key, confirmed side by side on the same day, with the same share
+of tasks passed (37 of 40 each). That's
 `--policies cache,reason --set reason.escalate=false`. Muse at `medium` only reasoned about 200 to 300
 tokens per call here, and `low` did the job just as well.
 

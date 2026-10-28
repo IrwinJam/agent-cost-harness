@@ -13,8 +13,8 @@ The benchmark also pays for a model that plays the customer and grades some answ
 doesn't touch those calls. Counting them, the total bill dropped about 15%.
 
 Adding `reasoning` with `escalate=false` (low reasoning effort for the whole conversation) cut another
-20% on the same 40 tasks without hurting success. Together that's roughly 37% off the agent's cost. That
-second number is softer, since it was compared with runs from a different day. See section 6 of
+20 to 21% on the same 40 tasks, in two separate runs, one of them side by side on the same day. Success
+didn't drop in either. Together that's roughly 37% off the agent's cost. See sections 6 and 7 of
 [RESULTS.md](RESULTS.md).
 
 ## The test behind it

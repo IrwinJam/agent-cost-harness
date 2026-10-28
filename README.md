@@ -13,8 +13,8 @@ gives you the numbers to back it up.
 | `cache_layout` | $0.0394 (**-21%**) | 92% |
 | `cache_layout` + low reasoning | $0.0315 (**-37%**) | 94% |
 
-<sub>Measured on Meta's muse-spark-1.3 with 40 customer-service tasks, 320 runs. The 37% row ran on a
-different day from the others. Full details in [RESULTS.md](docs/RESULTS.md).</sub>
+<sub>Measured on Meta's muse-spark-1.3 with 40 customer-service tasks, 400 runs. The low reasoning saving
+was confirmed in a same-day side-by-side run. Full details in [RESULTS.md](docs/RESULTS.md).</sub>
 
 **Building on Muse?** Run `python -m harness serve --muse --policies cache` and read
 [MUSE.md](docs/MUSE.md). It covers two things in Muse's API that quietly cost you money, and how this
@@ -46,8 +46,8 @@ each, with and without `cache_layout`. 240 runs, $17.10.
   that didn't have the prompt cached.
 - **Success dipped 2 points**, mostly from one task. The test plan's 3-point margin was too tight for
   40 tasks to prove either way, so that question is still open.
-- **Adding low reasoning effort cut another 20%** on all 40 tasks, and success held (94% vs 92%). That's
-  roughly 37% off with both, though the low-effort runs were on a different day.
+- **Adding low reasoning effort cut another 20 to 21%** on all 40 tasks, in two separate runs, and
+  success didn't drop in either. That's roughly 37% off with both.
 
 Full numbers and what went wrong are in [RESULTS.md](docs/RESULTS.md). Whether it would save you money is in
 [GUIDE.md](docs/GUIDE.md).

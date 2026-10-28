@@ -13,8 +13,8 @@ gives you the numbers to back it up.
 | `cache_layout` | $0.0394 (**-21%**) | 92% |
 | `cache_layout` + low reasoning | $0.0315 (**-37%**) | 94% |
 
-<sub>Measured on Meta's muse-spark-1.3 with 40 customer-service tasks, 400 runs. The low reasoning saving
-was confirmed in a same-day side-by-side run. Full details in [RESULTS.md](docs/RESULTS.md).</sub>
+<sub>Measured on Meta's muse-spark-1.3, 40 customer-service tasks, 400 runs, about $30.
+Details in [RESULTS.md](docs/RESULTS.md).</sub>
 
 **Building on Muse?** Run `python -m harness serve --muse --policies cache` and read
 [MUSE.md](docs/MUSE.md). It covers two things in Muse's API that quietly cost you money, and how this
@@ -27,29 +27,29 @@ prompt cache. Then it tests the change on real tasks, so "cheaper" comes with pr
 It works with any provider that speaks the OpenAI API format. Everything runs offline with a built-in
 simulator, so you can try it without a key.
 
-## Real results
+## What I found
 
-I tested it on Muse (muse-spark-1.3) with a public customer-service agent benchmark: 40 tasks, 3 runs
-each, with and without `cache_layout`. 240 runs, $17.10.
+I spent about $30 testing this on Muse (muse-spark-1.3) with a public customer-service agent benchmark.
+40 tasks, 400 runs total.
 
-| | Without | With `cache_layout` |
-|---|---:|---:|
-| Agent cost per run | $0.0502 | $0.0394 |
-| Input from cache | 83.6% | 94.4% |
-| Calls per run | 12.9 | 12.9 |
-| Tasks passed | 94% | 92% |
+- `cache_layout` cut agent cost 21% (95% CI 17% to 25%). The agent made the same calls and wrote about as
+  much, so the whole saving is cache. Input from cache went from 84% to 94%.
+- Low reasoning effort on top cut another 21%. I ran it twice, once on a different day and once side by
+  side, and success didn't drop either time.
+- Both together is 37% off, about $37 saved for every $100.
+- On 64 short live conversations the cache alone saved 47%.
 
-- **Agent cost dropped 21.5%** (95% CI 17% to 25%). That's about $21 saved for every $100 the agent
-  spends.
-- The agent made the same number of calls and wrote about as much, so the saving is all cache. Most of
-  it came from sending one shared cache key, which stopped the provider from routing calls to servers
-  that didn't have the prompt cached.
-- **Success dipped 2 points**, mostly from one task. The test plan's 3-point margin was too tight for
-  40 tasks to prove either way, so that question is still open.
-- **Adding low reasoning effort cut another 20 to 21%** on all 40 tasks, in two separate runs, and
-  success didn't drop in either. That's roughly 37% off with both.
+Two things in Muse's API cost you money without you knowing:
 
-Full numbers and what went wrong are in [RESULTS.md](docs/RESULTS.md). Whether it would save you money is in
+1. Without a shared `prompt_cache_key`, about 16% of input missed the cache even when every prompt started
+   the same. Sending one key fixed it.
+2. Each reasoning effort level has its own cache. Switch effort mid conversation and you pay for the whole
+   conversation again. Pick one and stay on it.
+
+What isn't proven yet: prices come from Meta's list, not a real bill. Success stayed within 2 points in every run, but 1 to
+3 runs per task isn't enough to rule out a small drop. And it's all one benchmark.
+
+Full numbers are in [RESULTS.md](docs/RESULTS.md). Whether it would save you money is in
 [GUIDE.md](docs/GUIDE.md).
 
 ## Try it
@@ -234,7 +234,5 @@ prices in there, under the provider name you pass with `--provider`, before trus
   against your provider's real cache numbers.
 - `cache_layout` moves timestamp lines into a `user` message, since not every provider allows a `system`
   message mid-chat. That could change behavior, so check success, not just cost.
-- `reasoning` with escalation cost 3% more in a pilot, because the provider kept a separate cache for
-  each effort level and every switch paid for most of the conversation again. With `escalate=false` it
-  cut 20% on all 40 tasks with success holding, but that was compared with runs from a different day.
-  Details in [RESULTS.md](docs/RESULTS.md).
+- `reasoning` with escalation cost 3% more in a pilot, because Muse keeps a separate cache for each
+  effort level. Use `escalate=false` there.

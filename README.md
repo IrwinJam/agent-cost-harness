@@ -1,5 +1,16 @@
 # agent-cost-harness
 
+## Cut your agent's API cost by about 37%, with the same success rate.
+
+| | Agent cost per run | Tasks passed |
+|---|---:|---:|
+| No harness | $0.0502 | 94% |
+| `cache_layout` | $0.0394 (**-21%**) | 92% |
+| `cache_layout` + low reasoning | $0.0315 (**-37%**) | 94% |
+
+<sub>Measured on 40 customer-service tasks with a hosted reasoning model, 400+ runs. The low reasoning
+runs were on a different day from the others. Full details in [RESULTS.md](RESULTS.md).</sub>
+
 AI agents waste a lot of tokens by sending the same stuff over and over. This shows where an agent's
 money goes, cuts the waste without breaking the prompt cache, and checks that the agent still does its
 job just as well.

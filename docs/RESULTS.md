@@ -3,11 +3,11 @@
 These are numbers from real runs on one benchmark with one model. They show what the harness found
 there. They don't say what it will save on your agent.
 
-**Setup.** A hosted reasoning model behind an OpenAI-compatible API, reasoning effort set to medium. The
+**Setup.** Meta's muse-spark-1.3 through its OpenAI-compatible Model API, reasoning effort set to medium. The
 tasks come from a public customer-service agent benchmark: a retail domain with 40 test tasks, a
 simulated customer played by the same model, and automatic grading (plus a model acting as judge on 11
 of the 40 tasks). The benchmark's own agent runs unchanged, with its calls routed through the harness.
-Costs use the provider's published prices, which I haven't checked line by line against the billing
+Costs use Meta's published prices, which I haven't checked line by line against the billing
 page yet.
 
 Total spent on everything below: about **$25**.

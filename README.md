@@ -1,6 +1,9 @@
 # agent-cost-harness
 
-## Cut your agent's API cost by about 37%, with the same success rate.
+## Cut your agent's API cost by 21 to 37%, and prove it didn't get worse.
+
+Most cost tools show you a smaller bill. This one also checks that your agent still does its job, and
+gives you the numbers to back it up.
 
 | | Agent cost per run | Tasks passed |
 |---|---:|---:|
@@ -8,20 +11,27 @@
 | `cache_layout` | $0.0394 (**-21%**) | 92% |
 | `cache_layout` + low reasoning | $0.0315 (**-37%**) | 94% |
 
-<sub>Measured on 40 customer-service tasks with a hosted reasoning model, 320 runs. The low reasoning
-runs were on a different day from the others. Full details in [RESULTS.md](RESULTS.md).</sub>
+<sub>Measured on Meta's muse-spark-1.3 with 40 customer-service tasks, 320 runs. The 37% row ran on a
+different day from the others. Full details in [RESULTS.md](docs/RESULTS.md).</sub>
 
-AI agents waste a lot of tokens by sending the same stuff over and over. This shows where an agent's
-money goes, cuts the waste without breaking the prompt cache, and checks that the agent still does its
-job just as well.
+**Building on Muse?** Run `python -m harness serve --muse --policies cache` and read
+[MUSE.md](docs/MUSE.md). It covers two things in Muse's API that quietly cost you money, and how this
+fixes them.
+
+**Want to see it first?** `python -m harness dashboard --demo` opens a live A/B test in your browser with
+fake traffic. No key, nothing spent.
+
+AI agents send the same stuff over and over, and a lot of what they pay for is the same prompt start
+getting billed at full price. This shows where the money goes and cuts the waste without breaking the
+prompt cache. Then it tests the change on real tasks, so "cheaper" comes with proof that nothing broke.
 
 It works with any provider that speaks the OpenAI API format. Everything runs offline with a built-in
 simulator, so you can try it without a key.
 
 ## Real results
 
-I tested it on a hosted reasoning model with a public customer-service agent benchmark: 40 tasks, 3
-runs each, with and without `cache_layout`. 240 runs, $17.10.
+I tested it on Muse (muse-spark-1.3) with a public customer-service agent benchmark: 40 tasks, 3 runs
+each, with and without `cache_layout`. 240 runs, $17.10.
 
 | | Without | With `cache_layout` |
 |---|---:|---:|
@@ -40,12 +50,12 @@ runs each, with and without `cache_layout`. 240 runs, $17.10.
 - **Adding low reasoning effort cut another 20%** on all 40 tasks, and success held (94% vs 92%). That's
   roughly 37% off with both, though the low-effort runs were on a different day.
 
-Full numbers and what went wrong are in [RESULTS.md](RESULTS.md). Whether it would save you money is in
-[GUIDE.md](GUIDE.md).
+Full numbers and what went wrong are in [RESULTS.md](docs/RESULTS.md). Whether it would save you money is in
+[GUIDE.md](docs/GUIDE.md).
 
 ## Try it
 
-Needs Python 3.11 or newer. No key needed. To use it with your own agent and provider, see [SETUP.md](SETUP.md).
+Needs Python 3.11 or newer. No key needed. To use it with your own agent and provider, see [SETUP.md](docs/SETUP.md).
 
 ```bash
 python -m venv .venv
@@ -66,6 +76,15 @@ naive-masking           0.2263     235,487       10%      16  history_rewritten 
 
 These are simulated numbers. They show the harness works, not what you'll save. `--clock` puts a ticking
 timestamp in the system prompt, so the baseline misses the cache on every call.
+
+Or watch a live A/B test fill in:
+
+```bash
+.venv/Scripts/python -m harness dashboard --demo      # then open http://localhost:8788
+```
+
+No Python? `docker build -t agent-cost-harness .` then
+`docker run --rm -p 8788:8788 agent-cost-harness dashboard --demo`.
 
 ## What's in it
 
@@ -148,6 +167,9 @@ const reply = await client.chat.completions.create({ model: "example-model", mes
 
 Then `python -m harness profile --db runs/serve.sqlite --list`.
 
+There's a full tool-calling agent in TypeScript in [examples/typescript](examples/typescript/agent.ts)
+and a plain shell version in [examples/curl.sh](examples/curl.sh).
+
 It only listens on your machine. Streaming doesn't work yet.
 
 ## Test it on your own traffic
@@ -158,6 +180,7 @@ gets the policies. Each conversation key always lands in the same half.
 ```bash
 python -m harness serve --base-url https://api.example.com/v1 --policies cache,reason --ab
 python -m harness ab --db runs/serve.sqlite
+python -m harness dashboard --db runs/serve.sqlite   # the same numbers, live in your browser
 ```
 
 ```
@@ -170,7 +193,7 @@ the policies are cheaper, and the interval doesn't cross zero
 ```
 
 That's a real run: 64 short scripted conversations against a hosted model with `--policies cache`
-(details in [RESULTS.md](RESULTS.md)). Short conversations save more than long ones, so don't expect
+(details in [RESULTS.md](docs/RESULTS.md)). Short conversations save more than long ones, so don't expect
 that exact number. Wait for at least 30 conversations in each half. This only measures cost, so check separately that the agent still does its job. `--ab 0.2` puts
 20% in the policies half if you want to start small.
 
@@ -222,4 +245,4 @@ prices in there, under the provider name you pass with `--provider`, before trus
 - `reasoning` with escalation cost 3% more in a pilot, because the provider kept a separate cache for
   each effort level and every switch paid for most of the conversation again. With `escalate=false` it
   cut 20% on all 40 tasks with success holding, but that was compared with runs from a different day.
-  Details in [RESULTS.md](RESULTS.md).
+  Details in [RESULTS.md](docs/RESULTS.md).

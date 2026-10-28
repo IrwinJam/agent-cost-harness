@@ -13,6 +13,9 @@ python -m venv .venv
 python -m pip install -e .
 ```
 
+**Using Muse?** Skip step 2, and in step 4 run `python -m harness serve --muse --policies cache`
+instead. Muse's prices and rules are built in. See [MUSE.md](MUSE.md).
+
 ## 2. Add your model's prices
 
 The repo only has made-up example prices. Open `harness/prices.yaml` and add your provider and model,

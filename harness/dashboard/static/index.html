@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Cost A/B</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="viz-root">
+    <header>
+      <h1>Agent cost A/B</h1>
+      <p class="sub">Half your conversations go through the policies, half go straight to the provider. Updates every 3 seconds.</p>
+      <p id="banner" class="banner" hidden></p>
+    </header>
+
+    <section class="hero" aria-live="polite">
+      <div class="hero-number" id="change">waiting for traffic</div>
+      <div class="hero-label">cost per conversation with the policies</div>
+      <div class="interval" id="interval" aria-hidden="true">
+        <div class="interval-zero"></div>
+        <div class="interval-bar" id="interval-bar"></div>
+        <div class="interval-point" id="interval-point"></div>
+      </div>
+      <div class="hero-note" id="ci-text"></div>
+    </section>
+
+    <section class="tiles">
+      <article class="tile" data-group="policies">
+        <h2><span class="swatch s1"></span>Policies</h2>
+        <div class="big" id="policies-mean">-</div>
+        <dl>
+          <dt>conversations</dt><dd id="policies-n">0</dd>
+          <dt>cache hit</dt><dd id="policies-hit">-</dd>
+          <dt>spent</dt><dd id="policies-total">-</dd>
+        </dl>
+      </article>
+      <article class="tile" data-group="control">
+        <h2><span class="swatch s2"></span>Control</h2>
+        <div class="big" id="control-mean">-</div>
+        <dl>
+          <dt>conversations</dt><dd id="control-n">0</dd>
+          <dt>cache hit</dt><dd id="control-hit">-</dd>
+          <dt>spent</dt><dd id="control-total">-</dd>
+        </dl>
+      </article>
+    </section>
+
+    <section class="chart-card">
+      <h2>Average cost per conversation so far</h2>
+      <div class="legend">
+        <span><span class="swatch s1"></span>Policies</span>
+        <span><span class="swatch s2"></span>Control</span>
+      </div>
+      <div class="chart" id="chart"></div>
+      <div class="tooltip" id="tooltip" hidden></div>
+    </section>
+
+    <section class="table-card">
+      <h2>Numbers</h2>
+      <table>
+        <thead><tr><th>Group</th><th>Conversations</th><th>Calls</th><th>$ per conversation</th><th>Cache hit</th><th>Spent</th></tr></thead>
+        <tbody id="table"></tbody>
+      </table>
+      <p class="foot">This measures cost only. Check separately that your agent still does its job.</p>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

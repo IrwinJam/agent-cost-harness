@@ -46,7 +46,7 @@ def test_page_and_api_are_served(tmp_path):
     base = f"http://127.0.0.1:{server.server_port}"
     try:
         page = httpx.get(base + "/")
-        assert page.status_code == 200 and "Agent cost A/B" in page.text
+        assert page.status_code == 200 and "Cost A/B" in page.text
         assert httpx.get(base + "/app.js").headers["content-type"].startswith("text/javascript")
         assert httpx.get(base + "/style.css").status_code == 200
         assert httpx.get(base + "/api/ab").json()["groups"][CONTROL]["n"] == 0

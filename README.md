@@ -1,5 +1,7 @@
 # agent-cost-harness
 
+[![tests](https://github.com/IrwinJam/agent-cost-harness/actions/workflows/tests.yml/badge.svg)](https://github.com/IrwinJam/agent-cost-harness/actions/workflows/tests.yml)
+
 ## Cut your agent's API cost by 21 to 37%, and prove it didn't get worse.
 
 Most cost tools show you a smaller bill. This one also checks that your agent still does its job, and

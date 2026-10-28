@@ -10,7 +10,7 @@ of the 40 tasks). The benchmark's own agent runs unchanged, with its calls route
 Costs use the provider's published prices, which I haven't checked line by line against the billing
 page yet.
 
-Total spent on everything below: about **$20**.
+Total spent on everything below: about **$25**.
 
 ## Short version
 
@@ -20,6 +20,10 @@ whole bill dropped about 15%.
 
 Success went from 94% to 92%. The test plan said it had to show success dropped by no more than 3
 points, and it couldn't show that. More on why below.
+
+Adding `reasoning` with `escalate=false` on top cut another **20%** (95% CI 16% to 24%) on all 40 tasks,
+and success held: 94% vs 92%, inside a 6-point margin. Together that's roughly 37% off the agent's cost
+compared with no policies, with the caveat in section 6 that the runs were on different days.
 
 ## 1. Full test: baseline vs cache_layout
 
@@ -150,7 +154,32 @@ The saving is bigger than in the full test because these conversations are short
 start is most of each call, so the cache matters more. Real agent conversations with more turns will
 land closer to the 21%. And since the conversations were scripted, this checks cost only.
 
-## 6. What this doesn't cover
+## 6. Low effort on all 40 tasks
+
+The pilot couldn't say if success holds, so this ran `cache_layout` plus `reasoning` with
+`escalate=false` on all 40 tasks, 2 trials each. To keep it under $7, only the low-effort setup ran.
+It's compared with the `cache_layout` runs from the full test (section 1), which used the same model
+and tasks at medium effort, 3 trials each. The plan, the 6-point margin and the comparison script were
+all written and committed before the run. $4.64.
+
+| | cache_layout (full test) | + low effort |
+|---|---:|---:|
+| Tasks passed | 91.7% | 93.8% |
+| Agent cost per trial | $0.0394 | $0.0315 (**-20%**) |
+| Reasoning tokens per trial | 2,936 | 1,170 (-60%) |
+
+- **Success held.** The difference is +2.1 points (95% CI -3.3 to +8.8). The one-sided lower bound is
+  -2.9 points, inside the 6-point margin, and even inside the 3-point one from the full test.
+- **Cost dropped 20%** (95% CI 16% to 24%) on top of what `cache_layout` already saved.
+- One task got clearly worse with low effort and one got clearly better. The better one is the
+  return-and-exchange task that `cache_layout` failed 3 of 3 times in the full test.
+
+The catch: the two setups ran on different days, with 2 trials against 3. If the provider changed
+anything in between, it would show up here as a difference between the setups. A side-by-side run
+would settle it. Still, this is the best sign so far that this model doesn't need medium effort for
+this kind of work.
+
+## 7. What this doesn't cover
 
 - One model, one provider, one benchmark. Your numbers will be different.
 - Tool outputs here are small, and contexts stayed under about 15k tokens. `output_handles` and

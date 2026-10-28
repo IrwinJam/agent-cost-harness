@@ -26,6 +26,8 @@ runs each, with and without `cache_layout`. 240 runs, $17.10.
   that didn't have the prompt cached.
 - **Success dipped 2 points**, mostly from one task. The test plan's 3-point margin was too tight for
   40 tasks to prove either way, so that question is still open.
+- **Adding low reasoning effort cut another 20%** on all 40 tasks, and success held (94% vs 92%). That's
+  roughly 37% off with both, though the low-effort runs were on a different day.
 
 Full numbers and what went wrong are in [RESULTS.md](RESULTS.md). Whether it would save you money is in
 [GUIDE.md](GUIDE.md).
@@ -206,7 +208,7 @@ prices in there, under the provider name you pass with `--provider`, before trus
   against your provider's real cache numbers.
 - `cache_layout` moves timestamp lines into a `user` message, since not every provider allows a `system`
   message mid-chat. That could change behavior, so check success, not just cost.
-- `reasoning` has only had two 5-task pilots. With escalation it cost 3% more, because the provider
-  kept a separate cache for each effort level and every switch paid for most of the conversation
-  again. With `escalate=false` it cost 15% less, but then writes don't get full effort, and 5 tasks
-  can't show whether success holds. Details in [RESULTS.md](RESULTS.md).
+- `reasoning` with escalation cost 3% more in a pilot, because the provider kept a separate cache for
+  each effort level and every switch paid for most of the conversation again. With `escalate=false` it
+  cut 20% on all 40 tasks with success holding, but that was compared with runs from a different day.
+  Details in [RESULTS.md](RESULTS.md).

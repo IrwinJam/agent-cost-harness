@@ -12,6 +12,11 @@ saved somewhere between $17 and $25, most likely about $21.
 The benchmark also pays for a model that plays the customer and grades some answers. The harness
 doesn't touch those calls. Counting them, the total bill dropped about 15%.
 
+Adding `reasoning` with `escalate=false` (low reasoning effort for the whole conversation) cut another
+20% on the same 40 tasks without hurting success. Together that's roughly 37% off the agent's cost. That
+second number is softer, since it was compared with runs from a different day. See section 6 of
+[RESULTS.md](RESULTS.md).
+
 ## The test behind it
 
 - 40 tasks, each run 3 times per setup, so 240 runs in all. $17.10 total.
